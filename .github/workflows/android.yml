@@ -1,0 +1,50 @@
+name: Compilar Rafita Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - Rafita-Android.zip
+      - .github/workflows/android.yml
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;34.0.0'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extraer el proyecto
+        run: unzip -q Rafita-Android.zip -d build-rafita
+
+      - name: Compilar
+        working-directory: build-rafita
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: Verificar juego incluido
+        run: |
+          unzip -p build-rafita/app/build/outputs/apk/debug/app-debug.apk assets/index.html > /tmp/rafita.html
+          cmp /tmp/rafita.html build-rafita/app/src/main/assets/index.html
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rafita-apk-prueba
+          path: build-rafita/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
